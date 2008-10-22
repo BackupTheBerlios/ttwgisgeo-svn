@@ -1,0 +1,49 @@
+module GISClientRequestTemplates language "TTCN-3:2005"  {
+	/*
+	 Types and templates for Creating, Retrieving, Upadating and Deleting a city
+	 @record CityType details necessary for a new city
+	 @template addGlenorchy details of the city of Glenorchy 
+	 @template verifyGlenorchy fields that against which verification is made	 
+	 */
+	type record CityType {
+		charstring requestType,
+		charstring cityName,
+		charstring latitude,
+		charstring longitude,
+		charstring adminName,
+		charstring countryName,
+		charstring status,
+		charstring popClass
+	}
+	type record UpdateCity {
+		charstring requestType,
+		charstring oldCityName,
+		charstring oldLatitude,
+		charstring oldLongitude,
+		charstring oldAdminName,
+		charstring oldCountryName,
+		charstring oldStatus,
+		charstring oldPopClass,
+		charstring newCityName,
+		charstring newLatitude,
+		charstring newLongitude,
+		charstring newAdminName,
+		charstring newCountryName,
+		charstring newStatus,
+		charstring newPopClass
+	}
+	template CityType genericCityTemplate(charstring name, charstring cityLongitude, charstring cityLatitude,
+			charstring cityAdminName, charstring cityCountryName, charstring cityStatus, charstring cityPopClass) := {
+		requestType := "addCity",
+		cityName := name,
+		latitude := cityLatitude,
+		longitude := cityLongitude,
+		adminName := cityAdminName,
+		countryName := cityCountryName,
+		status := cityStatus,
+		popClass := cityPopClass
+	}
+	
+	template charstring successPattern := pattern "*SUCCESS*";
+	template charstring errorPattern := pattern "*ERROR*";
+}
