@@ -155,49 +155,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 		}   
 		if (hm!=null) {			
 			String requestType = (String) hm.get("requestType");
-			if (requestType.equalsIgnoreCase("addCity")) {
-				byte[] b = null;	
-				CityBean cb = new CityBean();
-				cb.setAction("addCity");
-				cb.setName(hm.get("cityName"));
-				cb.setLatitude(hm.get("latitude"));
-				cb.setLongitude(hm.get("longitude"));
-				cb.setAdminName(hm.get("adminName"));
-				cb.setCountryName(hm.get ("countryName"));
-				cb.setStatus(hm.get("status"));
-				cb.setPopClass(hm.get("popClass"));
-				
-				String er = insertCityUsingGISClient(cb);
-				if (er.equals("error")) {
-					errorMessage = errorMessage + "...error while inserting city through GISClient";
-					TriMessage receivedMessage = new TriMessageImpl(errorMessage.getBytes());				
-					Cte.triEnqueueMsg(tsiPortId, new TriAddressImpl(new byte[] {}), componentId, receivedMessage);		
-					return new TriStatusImpl();					
-				}
-				// retrieve xml response from GeoServer
-				String xmlRetrieveCityQuery = util.getRetrieveCityQuery(cb);
-				String xmlServerResponse = sendQueryToServer(xmlRetrieveCityQuery);
-				// parse the response to create the CityBean object 
-				CityBean receivedCity = createCityBean(xmlServerResponse, "addCity");							
-				try {
-					ByteArrayOutputStream array_out = new ByteArrayOutputStream();
-					ObjectOutputStream obj_out = new ObjectOutputStream(array_out);
-					obj_out.writeObject(receivedCity);
-					b = array_out.toByteArray();					
-				} catch (IOException e) {
-					String m = "error" + e.getStackTrace();
-					b = m.getBytes();
-				}
-				// delete the city we just added so the the server comes back to its original state
-				String deleteCityQuery = util.getDeleteCityQuery(cb);
-				String serverDeleteResponse = sendQueryToServer(deleteCityQuery);
-				if (serverDeleteResponse.contains("ERROR")) {
-					b = serverDeleteResponse.getBytes();
-				}				
-				TriMessage receivedMessage = new TriMessageImpl(b);				
-				Cte.triEnqueueMsg(tsiPortId, new TriAddressImpl(new byte[] {}), componentId, receivedMessage);						
-				return new TriStatusImpl();				
-			} else if (requestType.equalsIgnoreCase("addOldCity")) {
+			if (requestType.equalsIgnoreCase("addOldCity")) {
 				String insertCityQuery ="";
 				CityBean cb = new CityBean();
 				cb.setAction("addCity");
@@ -249,9 +207,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				cb.setAdminName(hm.get("adminName"));
 				cb.setCountryName(hm.get ("countryName"));
 				cb.setStatus(hm.get("status"));
-				cb.setPopClass(hm.get("popClass"));
-				
-				String message = insertCityUsingGISClient(cb);							
+				cb.setPopClass(hm.get("popClass"));						
 				String insertCityQuery = util.getInsertCityQuery(cb);
 				String serverResponse = sendQueryToServer(insertCityQuery);
 				String result =  "";
@@ -315,7 +271,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				return new TriStatusImpl();				
 			} else if (requestType.equalsIgnoreCase("deleteGIS")) {
 				CityBean cb = new CityBean();
-				cb.setAction("addCityGEO");
+				cb.setAction("deleteGIS");
 				cb.setName(hm.get("cityName"));
 				cb.setLatitude(hm.get("latitude"));
 				cb.setLongitude(hm.get("longitude"));
@@ -331,7 +287,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				
 			} else if (requestType.equalsIgnoreCase("deleteGEO")) {
 				CityBean cb = new CityBean();
-				cb.setAction("addCityGEO");
+				cb.setAction("deleteGEO");
 				cb.setName(hm.get("cityName"));
 				cb.setLatitude(hm.get("latitude"));
 				cb.setLongitude(hm.get("longitude"));
@@ -515,6 +471,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 	 * @return a String that can be either SUCCESS or ERROR depending on the outcome of the operation
 	 */
 	private String insertCityUsingGISClient(CityBean cb) {
+		
 		String response = ERROR;
 		String cityName = cb.getName();
 		String latitude = cb.getLatitude();
@@ -756,11 +713,11 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				verifyCommitButton.click(); //click on the second commit button
 				mainPage = wc.getCurrentPage();
 				WebResponse responseFrame = wc.getFrameContents("inputs");
-				String xmlResponse = responseFrame.getText();
-				if (xmlResponse.toLowerCase().contains("success")) {
+				String theResponse = responseFrame.getText();
+				if (theResponse.toLowerCase().contains("success")) {
 					response = SUCCESS;
 				} else {
-					response = ERROR;
+					response = theResponse;
 				}					
 			} else {
 				response = ERROR;
