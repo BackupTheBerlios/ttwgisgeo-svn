@@ -8,9 +8,9 @@
 
 1. Prerequisites
 To execute the test cases the following are necessary:
-a. TTWorkbench Professional v. 1.1.4
-b. HttpUnit 1.7
-c. dom4j 1.6.1
+  a. TTWorkbench Professional v. 1.1.4
+  b. HttpUnit 1.7
+  c. dom4j 1.6.1
 
 2. Checkout the project from SVN repository
 Check out from the SVN repository the project files into a new TTCN-3 project. The URLs that can be used are:
