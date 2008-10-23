@@ -4,6 +4,7 @@
 3. Add the necessary libraries
 4. Compiling & running the tests
 4.1 Modify the build.xml
+4.2 Compile the Adapter and Codec
 
 1. Prerequisites
 To execute the test cases the following are necessary:
