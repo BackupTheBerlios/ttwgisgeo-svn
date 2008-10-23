@@ -32,17 +32,6 @@ module GISClientRequestTemplates language "TTCN-3:2005"  {
 		charstring newStatus,
 		charstring newPopClass
 	}
-	template CityType genericCityTemplate(charstring name, charstring cityLongitude, charstring cityLatitude,
-			charstring cityAdminName, charstring cityCountryName, charstring cityStatus, charstring cityPopClass) := {
-		requestType := "addCity",
-		cityName := name,
-		latitude := cityLatitude,
-		longitude := cityLongitude,
-		adminName := cityAdminName,
-		countryName := cityCountryName,
-		status := cityStatus,
-		popClass := cityPopClass
-	}
 	
 	template charstring successPattern := pattern "*SUCCESS*";
 	template charstring errorPattern := pattern "*ERROR*";

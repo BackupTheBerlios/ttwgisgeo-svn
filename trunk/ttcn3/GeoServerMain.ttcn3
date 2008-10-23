@@ -348,12 +348,17 @@ module GeoServerMain {
 		if (insertCityResult == "SUCCESS") {
 			log("City succesfully inserted at GEOServer");
 			var charstring deleteCityResult := deleteCityUsingGISClient(aCity);
-			if (deleteCityResult == "SUCCESS") {
+			if (deleteCityResult == "SUCCESS")  {
 				log("GISClient reported succeful deletion of city. Attempting to retrieve it from GEOServer");
 				var CityType retrieved := retrieveCityFromGEOServer(aCity);
+				log(retrieved);
 				template CityType retrievedCityNoAction modifies retrieved := {
 					requestType := ""
 				}
+				log("default city:");
+				log(defaultCity);
+				log("received city:");
+				log(retrievedCityNoAction); 
 				var boolean matchesWithDefault := match(retrievedCityNoAction, defaultCity);
 				if (matchesWithDefault) {
 					log("City successfully deleted from GEOServer");
@@ -445,7 +450,7 @@ module GeoServerMain {
 			countryName := "Australia",
 			status := "status",
 			popClass := "popClass"
-		}		
+		}	
 		log("Execute 'Create City' with correct data");
 		execute(insertCity(cityWithCorrectData));
 		log("Execute 'Create City' with correct data");
@@ -457,11 +462,11 @@ module GeoServerMain {
 		log("Execute 'Update City' with correct data");
 		execute(updateCity(valueof(cityWithCorrectData), valueof(updatedCityWithCorrectData)));
 		log("Execute 'Update City' with erroneous data");
-		execute(updateCity(valueof(cityWithCorrectData), valueof(cityWithErroneousData)));
+		execute(updateCity(valueof(cityWithCorrectData), valueof(cityWithErroneousData)));	
 		log("Execute 'Delete City' with correct data");
 		execute(deleteCity(valueof(cityWithCorrectData)));
 		log("Execute 'Delete City' with erroneous data");
-		execute(deleteCity(valueof(cityWithErroneousData)));		
+		execute(deleteCity(valueof(cityWithErroneousData)));	
 	}
 
 }
