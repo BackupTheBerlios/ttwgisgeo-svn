@@ -1,0 +1,153 @@
+<html>
+<head>
+<title>Using the TTCN-3 and Java code</title>
+</head>
+<body>
+&nbsp;&nbsp;&nbsp;&nbsp;Table of Contents<br/>
+<a href="#p1">1. Introduction</a><br/>
+<a href="#p2">2. Features</a><br/>
+<a href="#p3">3. TTCN-3 Code</a><br/>
+<a href="#p31">3.1 Communication with the SUT</a><br/>
+<a href="#p32">3.2 Data Stuctures</a><br/>
+<a href="#p33">3.3 Functions</a><br/>
+<a href="#p34">3.4 Test cases</a><br/>
+<a href="#p4">4. The Adapter and Codec Java code</a><br/>
+<a href="#p41">4.1 Adapter</a><br/>
+<a href="#p42">4.2 Codec</a><br/>
+
+<h3 id="p1">1. Introduction</h3>
+<p>This text describes the TTCN-3 Abstract Test Suite developed for testing interoperability in the GISClient/ASM - Mule/GEOServer test bed using TTWorkbench. Basic familiarity with the TTCN-3 language is assumed.<br/>
+
+<h3 id="p2">2. Features</h3>
+<p>The tests cases implemented are Create, Retrieve, Update and Delete a city. <br/>
+The functions used for performing the operations with the SUT are parameterised so that any template of <code>CityType</code> can be sent to the SUT.</p>
+
+<h3 id="p3">3. TTCN-3 Code</h3>
+<p>The most basic action taken is asking one of the IUTs to perfom an action on a city (creating, retrieving, updating or deleting it). To do this the type <code>CityType</code> has been created. <code>CityType</code> is a record that contains the details of a city plus the action that is asked of the SUT to perform.<br/>
+The test cases depend on the functions to communicate with the SUT. The test case code evaluates the responses and sets the appropriate verdict.</p>
+
+<h4 id="p31">3.1 Communication with the SUT</h4>
+<p>There must be one two way port and two components containing this port in order to communicate with the Adapter. The names of the components do not matter.<br/>
+<pre><code class="nocontrols:nogutter">
+	type port GISClientUpperInterfacePort message {
+		out all;
+		in all;
+	}
+	 
+	type component GISClientUpperInterfaceComponent {
+		port GISClientUpperInterfacePort clientPort;
+		timer localTimer := 15.0;	 
+	}
+	
+	type component TSIcomponent  {
+		port GISClientUpperInterfacePort tsiPort;
+	}
+</code></pre>
+
+The way to send a message when inside a function or testcase is:
+<pre>clientPort.send(aCity);</pre>
+The way to receive a message from the SUT:<br/>
+<pre>clientPort.receive(replyFromServer) -> value result </pre>
+<h4 id="p32">3.2 Data Stuctures</h4> 
+<p>In order to use the Adapter the following data structures must be used. Sending the details of a city and which action must be taken for this city (create, retrieve, delete) is done using templates of type <code>CityType</code>. The definition of <code>CityType</code> is seen on the listing below.<br/>
+<pre>
+type record CityType {
+	charstring requestType,
+	charstring cityName,
+	float latitude,
+	float longitude,
+	charstring adminName,
+	charstring countryName,
+	charstring status,
+	charstring popClass
+}
+</pre>
+<br/>A special type had to be created for the action of updating the city, since we have to send the details of both the existing city (in order to retrieve it) and the new values of the fields that will be updated. This datatype is used only inside function <code>updateCityUsingGISClient</code>.<br/>
+<pre>
+type record UpdateCity {
+	charstring requestType,
+	charstring oldCityName,
+	float oldLatitude,
+	float oldLongitude,
+	charstring oldAdminName,
+	charstring oldCountryName,
+	charstring oldStatus,
+	charstring oldPopClass,
+	charstring newCityName,
+	float newLatitude,
+	float newLongitude,
+	charstring newAdminName,
+	charstring newCountryName,
+	charstring newStatus,
+	charstring newPopClass
+}
+</pre>
+<br/>The responses expected are of two types: Either a <code>CityType</code> (in a retrieve operation) or charstings containing either 'SUCCESS' or 'ERROR',which is the response of GEOServer after a commit. The ERROR response does not mean a failure of communication or some other system failure. It usually means a failure of the commit action due to erroneus data. It might also mean an error in the Adapter, such as the requestType of a <code>CityType</code> template having a value unrecognisable by the test system.<br/></p>
+
+<h4 id="p33">3.3 Functions </h4> 
+<p>Seven functions were created in order to group together the communication with the SUT and to improve readability of the test cases. All the communication with the SUT is done through these functions. They are:<br/>
+<ul>
+<li><pre>function insertCityUsingGISClient(CityType inCity) runs on SUTInterfaceComponent return charstring</pre>
+This function has a parameter of <code>CityType</code> and uses the GISClient web interface to insert the city. It returns the string SUCCESS or ERROR depending on what message was returned to the GISClient after the commit operation. Inside the function the requestType parameter of the city to be sent must be set to "addCityGIS".</li>
+<li><pre>function insertCityAtGEOServer(CityType city) runs on SUTInterfaceComponent return charstring</pre>
+This function has a parameter of <code>CityType</code> and sends a XML message to GEOServer's REST web services interface to insert the city. It returns the string SUCCESS or ERROR depending on what message was returned by the GEOServer. Inside the function the requestType parameter of the city to be sent must be set to "addCityGEO".</li>
+<li><pre>function updateCityUsingGISClient(CityType oldCity, CityType newCity) runs on SUTInterfaceComponent return charstring</pre>
+This function uses GISClient web interface to first retrieve the oldCity and then replaces all its values with newCity. It returns the string SUCCESS or ERROR depending on what message was returned to the GISClient after the commit operation. Inside the function the requestType parameter of the city to be send must be set to "updateCity"</li>
+<li><pre>function deleteCityUsingGISClient(CityType city) runs on SUTInterfaceComponent return charstring </pre>
+This function has a parameter of <code>CityType</code> and uses the GISClient web interface to delete the city. It returns the string SUCCESS or ERROR depending on what message was returned to the GISClient after the commit operation. Inside the function the requestType parameter of the city to be send must be set to "deleteGIS"</li>
+<li><pre>function deleteCityAtGEOServer(CityType city) runs on SUTInterfaceComponent return charstring</pre>
+This function has a parameter of <code>CityType</code> and and sends a XML message to GEOServer's REST web services interface to delete the city. It returns the string SUCCESS or ERROR depending on what message was returned to the GISClient after the commit operation. Inside the function the requestType parameter of the city to be send must be set to "deleteGEO"</li>
+<li><pre>function retrieveCityFromGEOServer(CityType city) runs on SUTInterfaceComponent return CityType</pre>
+This function retrieves all the details of the <code>CityType</code> by sending an XML message to GEOServer's REST web services interface. It parses GEOServer's response and creates a <code>CityType</code> variable with GEOServer's response to retrieve operation. If no city is found it returns a <code>CityType</code> with the values of defaultCity template. Inside the function the requestType parameter of the city to be send must be set to "retrieveCity"</li>
+<li><pre>function retrieveCityFromGISClient(CityType city) runs on SUTInterfaceComponent return CityType</pre>
+This function uses the name, country name, admin name and pop class of the <code>CityType</code> argument to retrieve a city from the GISClient's web interface. It returns the full details of the City retrieved. If no city is found it returns a <code>CityType</code> with the values of defautCity template. Inside the function the requestType parameter of the city to be send must be set to "retrieveCityGIS"</li>
+</ul>
+<h4 id="p34">3.4 Test cases</h4>
+<p>The test cases are parameterised so that each can be executed many times with different data each time.<br/> 
+The test cases must run on the SUTInterfaceComponent and the system interface must be TSIComponent. eg:
+<pre><code>testcase insertCity(CityType cityToInsert) runs on SUTInterfaceComponent system TSIcomponent {...</code></pre>
+Caution has been taken so that after each test case is run the data in the server are not changed. <br/> 
+Using the appropriate functions, a response from the SUT is received which is then evaluated in order to assign a verdict.<br/>
+To compare the responses from the SUT the matching mechanism of TTCN-3 is used. When two <code>CityType</code> variables are compared the value in each field must be identical. <br/>
+When checking for a "SUCCESS" or "ERROR" response, the templates that the response is matched again is declared as a pattern of "*SUCCESS*" and "*ERROR*" so if there is anywhere in the response those words the match is succesfull.<br/>
+The order by which the test cases are executed and the parameters they take is defined in the control stucture.</p>
+ 
+<h3 id="p4">4. The Adapter and Codec Java code<h3>
+<h4 id="p41">4.1 Adapter</h4>
+<h5>Setting the SUT URLs</h5>
+To set URLs of the GISClient web interface and the GEOServer REST web services interface the <code>GEOSERVER_URL</code> and <code>GISCLIENT_URL</code>:
+<pre>
+private final String GEOSERVER_URL = "http://150.254.173.202:8090/geoserver/wfs";
+private final String GISCLIENT_URL = "http://syros.eurodyn.com:18088/GISClient3/";
+</pre>
+<h5>Enqueing the SUT response</h5>
+When a call to the send(param) function is made on the TTCN-3 code, the triSend() method is called in the adapter. One of the arguments is the message that was sent as a parameter.<br/>
+After the parameter is processed and the communication with the SUT is complete the SUT's response must be sent to the Test Executable. In the adapter this is done inside the triSend() method with the following code:<br/>
+<pre><code>Cte.triEnqueueMsg(tsiPortId, new TriAddressImpl(new byte[] {}), componentId, receivedMessage);</code></pre>
+The Cte object is implementing the queue of responses to be sent back to the Test Executable. The <code>tsiPortId</code> and <code>componentId</code> objects are exactly the ones coming from the <code>triSend()<code> arguments. The receivedMessage object is created by the user and contains the SUT response encoded in a byte array.
+
+<h5>Identifying which transaction will be performed for the city</h5>
+Inside the <code>triSend()</code> function the requestType parameter is read. Depending on its value the appropriate transaction is performed (create, retrieve, update, delete).
+<ul>
+<li><code>addCityGIS</code>: Delete city using GISClient</li>
+<li><code>addCityGEO</code>: Update city using GEOServer</li>
+<li><code>updateCity</code>: Update city using GISClient</li>
+<li><code>deleteGIS</code>: Delete city using GISClient</li>
+<li><code>deleteGEO</code>: Delete city using GEOServer</li>
+<li><code>retrieveCity</code>: Retrieve city using GEOServer</li>
+<li><code>retrieveCityGIS</code>: Retrieve city using GISClient</li>
+</ul>
+</p>
+</body>
+</html> 
+
+
+
+
+
+
+
+
+
+
+
