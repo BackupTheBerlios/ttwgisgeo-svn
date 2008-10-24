@@ -138,6 +138,19 @@ Inside the <code>triSend()</code> function the requestType parameter is read. De
 <li><code>retrieveCityGIS</code>: Retrieve city using GISClient</li>
 </ul>
 </p>
+<h4 id="p42">4.2 Codec</h4>
+A basic implementation of a Codec is provided in class 
+<code>com.testingtech.ttcn.tci.codec.base.AbstractBaseCodec</code>. The source code of this class 
+is available so the developer can consult it, in order to find out how the encoding and decoding can 
+be done.<br/>
+In our implementation the message from the TTCN-3 test executable to the SUT is always a Record 
+variable. It is encoded in a byte array containing the record field names and values delimited 
+by a special byte.<br/>
+The encoder receives from the SUT either a serialized <code>CityBean</code> object or 
+a <code>String</code> object. From the CityBean a <code>org.etsi.ttcn.tci.RecordValue</code> object 
+is created that holds a TTCN-3 variable of <code>CityType</code> is returned to the test executable. 
+If a <code>String</code> is received from the SUT an <code>org.etsi.ttcn.tci.CharstringValue</code> 
+object is returned to the test executable.<br/>
 </body>
 </html> 
 
