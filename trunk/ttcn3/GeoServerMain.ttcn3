@@ -27,6 +27,17 @@ module GeoServerMain {
 		popClass := ""
 	}
 	
+	template CityType anyCity := {
+		requestType := ?,
+		cityName := ?,
+		latitude := ?,
+		longitude := ?,
+		adminName := ?,
+		countryName := ?,
+		status := ?,
+		popClass := ?		
+	}
+	
 	/*
 		Insert the city using the GISClient interface. 
 		Returns 'SUCCESS' if the insert was successfull or 'ERROR' otherwise.
@@ -190,7 +201,7 @@ module GeoServerMain {
 		clientPort.send(cityToSend);
 		localTimer.start;
 		alt {
-			[] clientPort.receive(cityToSend) -> value result {				
+			[] clientPort.receive(anyCity) -> value result {				
 				localTimer.stop;
 			}
 			[] clientPort.receive(anyChar) -> value msg  {
@@ -202,6 +213,7 @@ module GeoServerMain {
 			[] localTimer.timeout {
 			}			
 		}
+		log(msg);
 		if (msg == "") {
 			return result;
 		} else {
@@ -221,18 +233,16 @@ module GeoServerMain {
 		clientPort.send(cityToSend);
 		localTimer.start;
 		alt {
-			[] clientPort.receive(cityToSend) -> value result {				
+			[] clientPort.receive(anyCity) -> value result {				
 				localTimer.stop;
 			}
-			[] clientPort.receive(anyChar) -> value msg {
-				localTimer.stop;
-			} 
 			[] clientPort.receive {
 				localTimer.stop;
 			} 
 			[] localTimer.timeout {
 			}			
 		}
+		log(msg);
 		if (msg == "") {
 			return result;
 		} else {
@@ -287,6 +297,40 @@ module GeoServerMain {
 		unmap(mtc:clientPort,system:tsiPort);
 	}
 	
+	
+	
+	/* This test attempts to insert a city that has erroneous values:
+	   1. Attempt to retrieve the city to verify it does not already exist
+	   2. Insert the city using the GISClient
+	   3. Retrieve the city directly from GEOServer
+	   4. Delete the city directly at GEOServer so that the server will be in the same condition		 
+	*/ 
+	testcase insertCity2(CityType cityToInsert) runs on GISClientUpperInterfaceComponent system TSIcomponent {		
+		log("Mapping ports...");
+		map(mtc:clientPort,system:tsiPort);		
+		var charstring insertResult := insertCityUsingGISClient(cityToInsert);
+		if (insertResult == "ERROR") {
+			log("GISClient reported an error during insertion.");
+			var CityType verifyCity := retrieveCityFromGEOServer(cityToInsert);
+			template CityType verifyCityNoAction modifies verifyCity := {
+				requestType := ""
+			}
+			var boolean cityInserted := match(verifyCityNoAction, cityToInsert);
+			if (cityInserted) {
+				log("The city was retrieved.");
+				setverdict(fail);			
+			} else {
+				log("The city was not inserted.");
+				setverdict(pass);	
+			}
+		} else {
+			log("GISClient reported error during insertion.");
+			setverdict(inconc);
+		}		
+		unmap(mtc:clientPort,system:tsiPort);
+	}
+	
+	
 	/*
 		Test the update functionality of a city
 		1. Insert a city directly at the GEOServer
@@ -333,12 +377,47 @@ module GeoServerMain {
 		}
 		unmap(mtc:clientPort,system:tsiPort);	
 	}
+	
+	/*
+		Attempt to update an existing city with erroneous values
+		1. Insert a city directly at the GEOServer
+		2. Update some of it's details with malformed data
+		3. If the update is successfiul then the test case fails
+	 */
+	testcase updateCity2(CityType initialCity, CityType updatedCity) runs on GISClientUpperInterfaceComponent system TSIcomponent {
+		log("Mapping ports...");
+		map(mtc:clientPort,system:tsiPort);
+		log("Inserting a new city directly at GEOServer.");
+		var charstring insertCityResult :=  insertCityAtGEOServer(initialCity);
+		if (insertCityResult == "SUCCESS") {
+			log("Initial city inserted. Updating city details...");
+			var charstring updateResult := updateCityUsingGISClient(initialCity, updatedCity);
+			if (updateResult == "ERROR") {
+				log("GISClient reported error while updateing with malformed data.");
+				setverdict(pass);
+			} else {
+				log("GISClient reported success while updating with malformed data.");
+				setverdict(fail);
+			}
+			var charstring deleteResponse := deleteCityAtGEOServer(initialCity);
+			if (deleteResponse == "SUCCESS") {
+				log("City deleted in order to restore the system to its initial condition.");
+			} else {
+				log("Could not delete city.")
+			}	
+		} else {
+			log("Error. Could not enter the initial city.");
+			setverdict(inconc);
+		}
+		unmap(mtc:clientPort,system:tsiPort);	
+	}
+	
 	/*
 		Test deleting a city.
 		1. Insert a new city directly at GEOServer
 		2. Delete it using GISClient
 		3. Attempt to retrieve it from GEOServer
-		4. If it still exists then the test fails, otherwise it's successful.		
+		4. If it still exists then the test fails, otherwise it's successful.
 	 */
 	testcase deleteCity(CityType aCity) runs on GISClientUpperInterfaceComponent system TSIcomponent {
 		log("Mapping ports...");
@@ -383,6 +462,38 @@ module GeoServerMain {
 		}
 		unmap(mtc:clientPort,system:tsiPort);	
 	}
+	
+	/*
+		Test deleting a city.
+		1. Insert a new city directly at GEOServer
+		2. Delete it using GISClient
+		3. Attempt to retrieve it from GEOServer
+		4. If it still exists then the test fails, otherwise it's successful.		
+	 */
+	testcase deleteCity2(CityType aCity) runs on GISClientUpperInterfaceComponent system TSIcomponent {
+		log("Mapping ports...");
+		map(mtc:clientPort,system:tsiPort);
+		var CityType retrieved := retrieveCityFromGEOServer(aCity);
+		template CityType retrievedCityNoAction modifies retrieved := {
+			requestType := ""
+		}
+		var boolean matchesWithDefault := match(retrievedCityNoAction, defaultCity);
+		if (matchesWithDefault) {
+			log("City does not exist. Attempting to delete it with GISClient.");
+			var charstring deleteCityResult := deleteCityUsingGISClient(aCity);
+			if (deleteCityResult == "ERROR")  {
+				log("GISClient reported an error while deleting a non-existing City.");
+				setverdict(pass);	
+			} else {
+				log("GISClient reported success while deleting a non existing City.");
+				setverdict(fail);
+			}			
+		} else {
+			log("Error. The city already exists at GEOServer.");
+			setverdict(inconc);
+		}
+		unmap(mtc:clientPort,system:tsiPort);	
+	}
 	/* Test if the interface displays a city correctly 
 	   1. Insert a city directly at the GEOServer
 	   2. Retrieve the city from the GISClient interface
@@ -398,7 +509,7 @@ module GeoServerMain {
 			template CityType returnedCityNoAction modifies returnedCity := {
 				requestType := ""
 			} 
-			var boolean cityMatch := match(returnedCityNoAction, aCity);			
+			var boolean cityMatch := match(returnedCityNoAction, aCity);	
 			if (cityMatch) {
 				log("Match successful");
 				setverdict(pass);
@@ -410,13 +521,46 @@ module GeoServerMain {
 			if (deleteResponse == "SUCCESS") {
 				log("City deleted in order to restore the system to its initial condition.");
 			} else {
-				log("Could not delete city.")
+				log("Could not delete city.");
 			}	
 		} else {
 			log("Error. Cannot insert city in GEOServer");
 			setverdict(inconc);
 		}
 		unmap(mtc:clientPort,system:tsiPort);		
+	}
+	
+	/* Attempt to retrieve a city that does not exist in GEOServer
+	   1. Insert a city directly at the GEOServer.
+	   2. Retrieve the city from the GISClient interface.
+	   3. If the city exists then the test passes otherwise it fails.	   
+	*/
+	testcase retrieveCity2(CityType aCity) runs on GISClientUpperInterfaceComponent system TSIcomponent {
+		map(mtc:clientPort,system:tsiPort);	
+		var CityType retrieved := retrieveCityFromGEOServer(aCity);
+		template CityType retrievedCityNoAction modifies retrieved := {
+			requestType := ""
+		}
+		var boolean matches := match(retrievedCityNoAction, aCity);
+		if (not matches) {
+			log("The city does not exist in GEOServer. Attempting to retrieve it from GISClient");
+			var CityType returnedCity := retrieveCityFromGISClient(aCity);
+			template CityType returnedCityNoAction modifies returnedCity := {
+				requestType := ""
+			} 
+			var boolean cityMatch := match(defaultCity, aCity);
+			if (cityMatch) {
+				log("A city was returned.");
+				setverdict(fail);
+			} else {
+				log("Could not retrieve city. The test is successful");
+				setverdict(pass);
+			}
+		} else {
+			log("Error. The city already exists. Cannot proceed with testing!");
+			setverdict(inconc);
+		}
+		unmap(mtc:clientPort,system:tsiPort);			
 	}
 	
 	control {
@@ -453,20 +597,20 @@ module GeoServerMain {
 		}	
 		log("Execute 'Create City' with correct data");
 		execute(insertCity(cityWithCorrectData));
-		log("Execute 'Create City' with correct data");
-		execute(insertCity(valueof(cityWithErroneousData)));
+		log("Execute 'Create City' with malformed data");
+		execute(insertCity2(valueof(cityWithErroneousData)));
 		log("Execute 'Retrieve City' with correct data");
 		execute(retrieveCity(valueof(cityWithCorrectData)));
 		log("Execute 'Create City' with erroneous data");
-		execute(retrieveCity(valueof(cityWithErroneousData)));
+		execute(retrieveCity2(valueof(cityWithCorrectData)));
 		log("Execute 'Update City' with correct data");
 		execute(updateCity(valueof(cityWithCorrectData), valueof(updatedCityWithCorrectData)));
 		log("Execute 'Update City' with erroneous data");
-		execute(updateCity(valueof(cityWithCorrectData), valueof(cityWithErroneousData)));	
+		execute(updateCity2(valueof(cityWithCorrectData), valueof(cityWithErroneousData)));
 		log("Execute 'Delete City' with correct data");
 		execute(deleteCity(valueof(cityWithCorrectData)));
 		log("Execute 'Delete City' with erroneous data");
-		execute(deleteCity(valueof(cityWithErroneousData)));	
+		execute(deleteCity2(valueof(cityWithCorrectData)));
 	}
 
 }
