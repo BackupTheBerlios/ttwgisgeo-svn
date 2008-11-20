@@ -5,8 +5,8 @@ import java.io.Serializable;
 public class CityBean implements Serializable {
 	private String action="";
 	private String name="";
-	private String longitude="";
-	private String latitude="";
+	private String longitude="0.0";
+	private String latitude="0.0";
 	private String adminName="";
 	private String countryName="";
 	private String status="";

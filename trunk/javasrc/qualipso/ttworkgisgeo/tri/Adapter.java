@@ -155,30 +155,7 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 		}   
 		if (hm!=null) {			
 			String requestType = (String) hm.get("requestType");
-			if (requestType.equalsIgnoreCase("addOldCity")) {
-				String insertCityQuery ="";
-				CityBean cb = new CityBean();
-				cb.setAction("addCity");
-				cb.setName(hm.get("cityName"));
-				cb.setLatitude(hm.get("latitude"));
-				cb.setLongitude(hm.get("longitude"));
-				cb.setAdminName(hm.get("adminName"));
-				cb.setCountryName(hm.get ("countryName"));
-				cb.setStatus(hm.get("status"));
-				cb.setPopClass(hm.get("popClass"));
-				String insertQuery = util.getInsertCityQuery(cb);
-				String response = sendQueryToServer(insertQuery);
-				String message = "";
-				if (response.contains(ERROR)) {
-					message="ERROR";
-				} else {
-					message="SUCCESS";
-				}
-				
-				TriMessage receivedMessage = new TriMessageImpl(message.getBytes());				
-				Cte.triEnqueueMsg(tsiPortId, new TriAddressImpl(new byte[] {}), componentId, receivedMessage);		
-				return new TriStatusImpl();					
-			} else if (requestType.equals("addCityGIS")) {
+			if (requestType.equals("addCityGIS")) {
 				CityBean cb = new CityBean();
 				cb.setAction("addCityGIS");
 				cb.setName(hm.get("cityName"));
@@ -256,6 +233,9 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				String query = util.getRetrieveCityQuery(cb);
 				String serverResponse = sendQueryToServer(query);	
 				CityBean receivedCity = createCityBean(serverResponse, "retrieveCity");
+				if (receivedCity == null) {
+					receivedCity = new CityBean();
+				}
 				byte[] b;
 				try {
 					ByteArrayOutputStream array_out = new ByteArrayOutputStream();
@@ -318,19 +298,18 @@ public class Adapter extends TestAdapter implements TriCommunicationSA {
 				cb.setPopClass(hm.get("popClass"));
 				CityBean responseCity = retrieveCityFromGISClient(cb);
 				byte[] b;
-				if (responseCity != null) {
-					try {
-						ByteArrayOutputStream array_out = new ByteArrayOutputStream();
-						ObjectOutputStream obj_out = new ObjectOutputStream(array_out);
-						obj_out.writeObject(responseCity);
-						b = array_out.toByteArray();					
-					} catch (IOException e) {
-						String m = ERROR + e.getStackTrace();
-						b = m.getBytes();					
-					}					
-				} else {
-					b="ERROR. City not found".getBytes();
+				if (responseCity == null) {
+					responseCity = new CityBean();				
 				}
+				try {
+					ByteArrayOutputStream array_out = new ByteArrayOutputStream();
+					ObjectOutputStream obj_out = new ObjectOutputStream(array_out);
+					obj_out.writeObject(responseCity);
+					b = array_out.toByteArray();					
+				} catch (IOException e) {
+					String m = ERROR + e.getStackTrace();
+					b = m.getBytes();					
+				}	
 				TriMessage sendErrorMessage = new TriMessageImpl(b);
 				Cte.triEnqueueMsg(tsiPortId, new TriAddressImpl(new byte[] {}), componentId, sendErrorMessage);
 				return new TriStatusImpl();				
